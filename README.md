@@ -1,37 +1,39 @@
-## Welcome to GitHub Pages
+# vCenter Automation :  Rest In Peak
 
-You can use the [editor on GitHub](https://github.com/2spmohanty/vcenter-automation/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+The Plan is to create an Automation Platform that could handle Automation of vCenter Tasks in a Large scale. 
+The Rest In Peak Application provides a subtle way of Automation. It gives a friendly UI for the UI lovers while it also exposes REST endpoints for those who like to handle automation by writing codes.
+This application can be used to trigger Automation on Multiple vCenters simultaneously.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
 
-### Markdown
+## Phillosophy
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+vCenter Automation from Anywhere , Everywhere.
 
-```markdown
-Syntax highlighted code block
+## Future Works
 
-# Header 1
-## Header 2
-### Header 3
+vSAN Automation.
+NSX-T Automation.
+Host Level Operations.
+VM Level Operations (As of now only Power and Clone is covered)
+DC Level Operation.
 
-- Bulleted
-- List
+## How to Run.
 
-1. Numbered
-2. List
+Put Two Nodes in Swarm Mode.
 
-**Bold** and _Italic_ and `Code` text
+And in Master Node download the `docker-compose.yaml` file.
 
-[Link](url) and ![Image](src)
-```
+`$- docker stack deploy -c docker-compose.yml app`
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+### Home Page
 
-### Jekyll Themes
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/2spmohanty/vcenter-automation/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+
+
+
 
 ### Support or Contact
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+2spmmohanty at gmail dot com
+
+Please open issues in this branch if you would like to enable any other features
