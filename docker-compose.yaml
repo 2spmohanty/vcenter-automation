@@ -1,0 +1,44 @@
+version : '3.7'
+
+services:
+
+  web:
+    image: vsmruti/vcautomate:latest
+    networks: 
+      - webnet
+    depends_on: 
+      - vdb
+    
+    ports: 
+      - 443:443
+      - 80:80 
+
+    
+
+    command : >
+      sh -c "            
+            echo Start Apache &&
+            /usr/sbin/apache2 &&
+            echo Start Containers &&
+            /home/www-data/web2py/wait-fot-it.sh --strict --timeout=120 vdb:5432 -- python /home/www-data/web2py/web2py.py -K rip,rip,rip &&
+            tail -f /dev/null
+            "
+
+
+
+  vdb:
+    networks: 
+      - webnet
+    image: vsmruti/vmwdb:latest
+    ports: 
+      - 5432:5432    
+    environment:
+      - POSTGRES_PASSWORD='12345678'
+      - POSTGRES_USER=spm
+      - POSTGRES_DB=mydb
+
+
+networks:
+  webnet:
+    
+
