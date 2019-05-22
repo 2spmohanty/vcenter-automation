@@ -11,11 +11,11 @@ vCenter Automation from Anywhere , Everywhere.
 
 ## Future Works
 
-vSAN Automation.
-NSX-T Automation.
-Host Level Operations.
-VM Level Operations (As of now only Power and Clone is covered)
-DC Level Operation.
+- vSAN Automation.
+- NSX-T Automation.
+- Host Level Operations.
+- VM Level Operations (As of now only Power and Clone is covered)
+- DC Level Operation.
 
 ## How to Run.
 
@@ -28,7 +28,7 @@ And in Master Node download the `docker-compose.yaml` file.
 ### Home Page
 
 
-
+![Home Page](https://raw.githubusercontent.com/2spmohanty/vcenter-automation/master/Images/HomePage.png)
 
 
 
