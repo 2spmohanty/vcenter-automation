@@ -31,7 +31,7 @@ Put Two Nodes in Swarm Mode.
 
 And in Master Node download the `docker-compose.yaml` file.
 
-`docker stack deploy -c docker-compose.yml app`
+`docker stack deploy -c docker-compose.yaml app`
 
 #### Home Page
 
