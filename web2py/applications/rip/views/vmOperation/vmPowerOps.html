@@ -1,0 +1,139 @@
+{{extend 'layout.html'}}
+
+
+<style>
+table, th, td {
+    border: 1px white;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+    section {
+    width:1000px;
+    padding-top: 150px;
+    padding-left:350px;
+}
+p    {
+color:grey;
+font-family: courier;
+font-size: 90%;
+}
+
+codeA {
+  background-color:#EEEEEE;
+  font-family:"Consolas";
+}
+.panel-body  {
+    word-break:break-all
+}
+.panel-heading {
+    color: #ffffff;
+}
+</style>
+
+<div class = "row">
+    <div class="col-sm-5"></div>
+    <div class="col-sm-2"><h4 style="color:lightgrey;font-family:verdana;"><b>VM Power Operation</b> </h4></div>
+    <div class="col-sm-5"></div>
+</div>
+<div class = "row">
+    <div class="col-sm-2"></div>
+    <div class="col-sm-8">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading" >URI: <u class="text-lowercase">http://{{=response.app_uri}}/rip/vm_0/vmpowerops</u></div>
+                    <div class="panel-body code"><codeA>This API can be used to trigger Power Operation on VMs. The &quot;ops&quot; key can be set to on | off | reset.
+                        Additionally, instead of &quot;vm&quot; key the &quot;pattern&quot; key can be used, where in the Power operation gets triggered on VMs whose
+                        name contains the pattern string. The &quot;pattern&quot; and &quot;vm&quot; key is mutually exclusive.
+                        Either one needs to be present. The &quot;pattern&quot; key overrides the &quot;vm&quot; key</codeA>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-2"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " >
+                        <a data-toggle="collapse" href="#collapse1"><u color="#ffffff">Sample JSON</u></a>
+                    </div>
+                    <div id="collapse1" class="panel-collapse collapse">
+                        <div class="panel-body" ><pre id="samplexml"> Hello </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " font color="white">
+                        <a data-toggle="collapse" href="#collapse2">Try it Out</a>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <div class="panel-body" >{{=form}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+
+
+
+<script>
+
+$(document).ready(function() {
+
+let html = `{
+    "operation":"vmpowerops",
+    "vc": [{
+        "username": "Administrator@vsphere.local",
+        "password": "Admin!23",
+        "dc": [
+            {
+                "cluster": [
+                    {
+                        "clustername": "Gryffindor",
+                        "vm": [
+                            "Linux-Webapp",
+                            "Windows-Webapp"
+                        ],
+                        "ops": "on"
+                    },
+                    {
+                        "clustername": "Slytherin",
+                        "pattern": [
+                            "Stress"
+                        ],
+                        "ops": "reset"
+                    }
+                ],
+                "dcname": "Hogwarts"
+            }
+        ],
+        "vcname": "10.172.109.40",
+		"wait" : 10
+    }]
+
+}`;
+
+$("#samplexml").html(html);
+});
+
+
+
+</script>

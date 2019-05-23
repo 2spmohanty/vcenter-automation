@@ -1,0 +1,1053 @@
+"""
+An object-oriented file access library for Python.
+
+More module documentation to come soon. For now, take a look at the File class
+to see what it does.
+
+Issues should be filed at http://github.com/javawizard/fileutils/issues.
+"""
+
+# This module used to be located in afn/python/src/afn, but it's now its own
+# module with its own repository.
+# The authoritative version of fileutils can be found at:
+# https://raw.github.com/javawizard/fileutils/master/fileutils.py
+
+import os
+import os.path
+import shutil
+import zipfile as zip_module
+from contextlib import closing
+import errno
+import urllib
+import hashlib
+from functools import partial as _partial
+import glob as _glob
+import urllib2
+import atexit
+import tempfile
+
+SKIP = "skip"
+RECURSE = "recurse"
+YIELD = "yield"
+
+# Set of File objects whose delete_on_exit property has been set to True. These
+# are deleted by the atexit hook registered two lines down.
+_delete_on_exit = set()
+@atexit.register
+def _():
+    for f in _delete_on_exit:
+        f.delete(ignore_missing=True)
+
+
+def file_or_none(f):
+    """
+    Returns File(f), unless f is None, in which case None is returned.
+    """
+    if f is not None:
+        return File(f)
+    else:
+        return None
+
+
+class File(object):
+    """
+    An object representing a file or folder. File objects are intended to be as
+    opaque as possible; one should rarely, if ever, need to know about the
+    pathname of a File object, or that a File even has a pathname associated
+    with it.
+    
+    The file or folder referred to by a File object need not exist. One can
+    test whether a File object represents a file that does exist using the
+    exists property.
+    
+    File objects cannot be changed to refer to a different file after they are
+    created.
+    """
+    def __init__(self, *path_components):
+        r"""
+        Creates a new file from the specified path components. Each component
+        represents the name of a folder or a file. These are internally joined
+        as if by os.path.join(*path_components).
+        
+        It's also possible, although not recommended, to pass a full pathname
+        (in the operating system's native format) into File. On Windows, one
+        could therefore do File(r"C:\some\file"), and File("/some/file") on
+        Linux and other Unix operating systems.
+        
+        You can also call File(File(...)). This is equivalent to File(...) and
+        exists to make it easier for functions to accept either a pathname or
+        a File object.
+        
+        Passing no arguments (i.e. File()) results in a file that refers to the
+        working directory as of the time the File instance was constructed.
+        
+        Pathnames are internally stored in absolute form; as a result, changing
+        the working directory after creating a File instance will not change
+        the file referred to.
+        """
+        # If we're passed a File object, use its path
+        if path_components and isinstance(path_components[0], File):
+            path = path_components[0]._path
+        # Join the path components, or use the empty string if there are none
+        elif path_components:
+            path = os.path.join(*path_components)
+        else:
+            path = ""
+        # Make the pathname absolute
+        path = os.path.abspath(path)
+        self._path = path
+    
+    @property
+    def is_folder(self):
+        """
+        True if this File is a folder, False if it isn't. If the file/folder
+        doesn't actually exist yet, this will be False.
+        
+        If this file is a symbolic link that points to a folder, this will be
+        True.
+        """
+        return os.path.isdir(self._path)
+    
+    @property
+    def is_directory(self):
+        """
+        Same as self.is_folder.
+        """
+        return self.is_folder
+    
+    @property
+    def is_file(self):
+        """
+        True if this File is a file, False if it isn't. If the file/folder
+        doesn't actually exist yet, this will be False.
+        
+        If this file is a symbolic link that points to a file, this will be
+        True.
+        """
+        return os.path.isfile(self._path)
+    
+    @property
+    def is_link(self):
+        """
+        True if this File is a symbolic link, False if it isn't. This will be
+        True even for broken symbolic links.
+        """
+        return os.path.islink(self._path)
+    
+    @property
+    def is_broken(self):
+        """
+        True if this File is a symbolic link that is broken, False if it isn't.
+        """
+        return self.is_link and not os.path.exists(self._path)
+    
+    @property
+    def exists(self):
+        """
+        True if this file/folder exists, False if it doesn't. This will be True
+        even for broken symbolic links; use self.valid if you want an
+        alternative that returns False for broken symbolic links.
+        """
+        return os.path.lexists(self._path)
+    
+    @property
+    def valid(self):
+        """
+        True if this file/folder exists, False if it doesn't. This will be
+        False for broken symbolic links; use self.exists if you want an
+        alternative that returns True for broken symbolic links.
+        """
+        return os.path.exists(self._path)
+        
+    def check_folder(self):
+        """
+        Checks to see whether this File refers to a folder. If it doesn't, an
+        exception will be thrown.
+        """
+        if not self.is_folder:
+            raise Exception('"%s" does not exist or is not a directory' % self._path)
+    
+    def check_file(self):
+        """
+        Checks to see whether this File refers to a file. If it doesn't, an
+        exception will be thrown.
+        """
+        if not self.is_file:
+            raise Exception('"%s" does not exist or is not a file' % self._path)
+    
+    @property
+    def children(self):
+        """
+        A list of all of the children of this file, as a list of File objects.
+        If this file is not a folder, the value of this property is None.
+        """
+        if not self.is_folder:
+            return
+        return [self.child(p) for p in self.child_names]
+    
+    def list(self):
+        """
+        An obsolete method that simply returns self.children.
+        """
+        return self.children
+    
+    @property
+    def child_names(self):
+        """
+        A list of the names of all of the children of this file, as a list of
+        strings. If this file is not a folder, the value of this property is
+        None.
+        """
+        if not self.is_folder:
+            return
+        return sorted(os.listdir(self._path))
+    
+    def list_names(self):
+        """
+        An obsolete method that simply returns self.child_names.
+        """
+        return self.child_names
+    
+    def open(self, *args, **kwargs):
+        """
+        Opens the file referred to by this File object and returns a Python
+        file instance. *args and **kwargs are passed through to Python's open
+        function as if by open(self.path, *args, **kwargs).
+        """
+        return open(self._path, *args, **kwargs)
+    
+    def child(self, *names):
+        """
+        Returns a File object representing the child of this file with the
+        specified name. If multiple names are present, they will be joined
+        together. If no names are present, self will be returned.
+        
+        If any names are absolute, all names before them (and self) will be
+        discarded. Relative names (like "..") are also allowed. If you want a
+        method that guarantees that the result is a child of self, use
+        self.safe_child(...).
+        
+        This method is analogous to os.path.join(self.path, *names).
+        """
+        return File(os.path.join(self.path, *names))
+    
+    # Just for fun...
+    __div__ = child
+    
+    def glob(self, glob):
+        """
+        Expands the specified path relative to self and returns a list of all
+        matching files, as File objects. This is a thin wrapper around a call
+        to Python's glob.glob function.
+        """
+        return [File(f) for f in _glob.glob(os.path.join(self.path, glob))]
+    
+    def safe_child(self, *names):
+        """
+        Same as self.child(*names), but checks that the resulting file is a
+        descendant of self. If it's not, an exception will be thrown. This
+        allows unsanitized paths to be used without fear that things like ".."
+        will be used to escape the confines of self.
+        
+        The pathname may contain occurrences of ".." so long as they do not
+        escape self. For example, "a/b/../c" is perfectly fine, but "a/../.."
+        is not.
+        """
+        child = self.child(*names)
+        if not self.ancestor_of(child):
+            raise ValueError("Names %r escape the parent %r" % (names, self))
+        return child
+    
+    def sibling(self, name):
+        """
+        Returns a File object representing the sibling of this file with the
+        specified name. This is equivalent to self.parent.child(name).
+        """
+        return self.parent.child(name)
+    
+    @property
+    def parent(self):
+        """
+        Returns a File representing the parent of this file. If this file has
+        no parent (for example, if it's "/" on Unix-based operating systems or
+        a drive letter on Windows), None will be returned.
+        """
+        dirname = os.path.dirname(self._path)
+        # I don't remember at the moment how this works on Windows, so cover
+        # all the bases until I can test it out
+        if dirname is None or dirname == "":
+            return None
+        f = File(dirname)
+        # Linux returns the same file from dirname
+        if f == self:
+            return None
+        return f
+    
+    def get_ancestors(self, including_self=False):
+        """
+        Returns a list of all of the ancestors of this file, with self.parent
+        first. If including_self is True, self will be first, self.parent will
+        be second, and so on.
+        """
+        if including_self:
+            current = self
+        else:
+            current = self.parent
+        results = []
+        while current is not None:
+            results.append(current)
+            current = current.parent
+        return results
+    
+    @property
+    def ancestors(self):
+        """
+        A list of all of the ancestors of this file, with self.parent first.
+        
+        This property simply returns self.get_ancestors(). Have a look at that
+        method if you need to do more complex things like include self as one
+        of the returned ancestors.
+        """
+        return self.get_ancestors()
+    
+    @property
+    def name(self):
+        """
+        The name of this file. For example, File("a", "b", "c").name will be
+        "c".
+        
+        On Unix-based operating systems, File("/").name will be the empty
+        string.
+        """
+        return os.path.basename(self._path)
+    
+    def get_path(self, relative_to=None, separator=None):
+        """
+        Gets the path to the file represented by this File object.
+        
+        If relative_to is specified, the returned path will be a relative path,
+        the path of this file relative to the specified one. Otherwise, the
+        returned path will be absolute.
+        
+        If separator (which must be a string) is specified, it will be used as
+        the separator to place between path components in the returned path.
+        Otherwise, os.path.sep will be used as the separator. 
+        """
+        if separator is None:
+            separator = os.path.sep
+        return separator.join(self.get_path_components(relative_to))
+    
+    @property
+    def path(self):
+        """
+        The absolute path to the file represented by this File object, in a
+        format native to the operating system in use. This pathname can then be
+        used with Python's traditional file-related utilities.
+        
+        This property simply returns self.get_path(). See the documentation for
+        that method for more complex ways of creating paths (including
+        obtaining relative paths).
+        """
+        return self.get_path()
+    
+    def get_path_components(self, relative_to=None):
+        """
+        Returns a list of the components in this file's path, including (on
+        POSIX-compliant systems) an empty leading component for absolute paths.
+        
+        If relative_to is specified, the returned set of components will
+        represent a relative path, the path of this file relative to the
+        specified one. Otherwise, the returned components will represent an
+        absolute path.
+        """
+        if relative_to is None:
+            return self._path.split(os.path.sep)
+        else:
+            return os.path.relpath(self._path, File(relative_to)._path).split(os.sep)
+    
+    @property
+    def path_components(self):
+        """
+        A property that simply returns self.get_path_components().
+        """
+        return self.get_path_components()
+    
+    def copy_to(self, other, overwrite=False):
+        """
+        Copies the contents of this file to the specified File object or
+        pathname. An exception will be thrown if the specified file already
+        exists and overwrite is False.
+        
+        This does not currently work for folders; I hope to add this ability
+        in the near future.
+        """
+        other = File(other)
+        self.check_file()
+        if other.exists and not overwrite:
+            raise Exception("%r already exists" % other)
+        with other.open("wb") as write_to:
+            for block in self.read_blocks():
+                write_to.write(block)
+    
+    def copy_into(self, other, overwrite=False):
+        """
+        Copies this file to an identically named file inside the specified
+        folder. This is just shorthand for self.copy_to(other.child(self.name))
+        which, from experience, seems to be by far the most common use case for
+        the copy_to function.
+        """
+        self.copy_to(other.child(self.name), overwrite)
+    
+    def download_from(self, url, overwrite=False):
+        """
+        Downloads the specified URL and saves it to self. If self already
+        exists and overwrite is False, an exception will be thrown; otherwise,
+        self will be overwritten.
+        """
+        if self.exists and not overwrite:
+            raise Exception("%r already exists" % self)
+        s = urllib2.urlopen(url)
+        with self.open("wb") as f:
+            shutil.copyfileobj(s, f)
+    
+    def recurse(self, filter=None, include_self=True, recurse_skipped=True):
+        """
+        A generator that recursively yields all child File objects of this file.
+        Files and directories (and the files and directories contained within
+        them, and so on) are all included.
+        
+        A filter function accepting one argument can be specified. It will be
+        called for each file and folder. It can return one of True, False,
+        SKIP, YIELD, or RECURSE, with the behavior of each outlined in the
+        following table:
+            
+                                  Don't yield   Do yield
+                                +-------------+----------+
+            Don't recurse into  | SKIP        | YIELD    |
+                                +-------------+----------+
+            Do recurse into     | RECURSE     | True     |
+                                +-------------+----------+
+            
+            False behaves the same as RECURSE if recurse_skipped is True, or
+            SKIP otherwise.
+        
+        If include_self is True (the default), this file (a.k.a. self) will be
+        yielded as well (if it matches the specified filter function). If it's
+        False, only this file's children (and their children, and so on) will
+        be yielded.
+        """
+        include = True if filter is None else filter(self)
+        if include in (YIELD, True) and include_self:
+            yield self
+        if include in (RECURSE, True) or (recurse_skipped and not include):
+            for child in self.children or []:
+                for f in child.recurse(filter, True, recurse_skipped):
+                    yield f
+        
+    @property
+    def size(self):
+        """
+        The size, in bytes, of this file. This is the number of bytes that the
+        file contains; the number of actual bytes of disk space it consumes is
+        usually larger.
+        
+        If this file is actually a folder, the sizes of its child files and
+        folders will be recursively summed up and returned. This can take quite
+        some time for large folders.
+        
+        This is the same as len(self).
+        """
+        if self.is_folder:
+            return sum(f.size for f in self.children)
+        elif self.is_file:
+            return os.path.getsize(self._path)
+        else: # Broken symbolic link or some other type of file
+            return 0
+    
+    def __len__(self):
+        return self.size
+    
+    def rename_to(self, other):
+        """
+        Rename this file or folder to the specified name, which can be a File
+        object or a pathname.
+        """
+        os.rename(self._path, File(other).path)
+    
+    def read(self, binary=True):
+        """
+        Read the contents of this file and return them as a string. This is
+        usually a bad idea if the file in question is large, as the entire
+        contents of the file will be loaded into memory.
+        
+        If binary is True (the default), the file will be read byte-for-byte.
+        If it's False, the file will be read in text mode.
+        """
+        with self.open("r" + ("b" if binary else "")) as f:
+            return f.read()
+    
+    def write(self, data, binary=True):
+        """
+        Overwrite this file with the specified data. After this is called,
+        self.size will be equal to len(data), and self.read() will be equal to
+        data. If you want to append data instead, use self.append().
+        
+        If binary is True (the default), the file will be written
+        byte-for-byte. If it's False, the file will be written in text mode. 
+        """
+        with self.open("w" + ("b" if binary else "")) as f:
+            f.write(data)
+    
+    def append(self, data, binary=True):
+        """
+        Append the specified data to the end of this file.
+        
+        If binary is True (the default), the file will be appended to
+        byte-for-byte. If it's False, the file will be appended to in text
+        mode.
+        """
+        with self.open("a" + ("b" if binary else "")) as f:
+            f.write(data)
+    
+    def read_blocks(self, block_size=16384, binary=True):
+        """
+        A generator that yields successive blocks of data from this file. Each
+        block will be no larger than block_size bytes, which defaults to 16384.
+        This is useful when reading/processing files larger than would
+        otherwise fit into memory.
+        
+        One could implement, for example, a copy function thus:
+        
+        with target.open("wb") as target_stream:
+            for block in source.read_blocks():
+                target_stream.write(block)
+        """
+        with self.open("r" + ("b" if binary else "")) as f:
+            data = f.read(block_size)
+            while data:
+                yield data
+                data = f.read(block_size)
+    
+    def hash(self, algorithm=hashlib.md5, return_hex=True):
+        """
+        Compute the hash of this file and return it, as a hexidecimal string.
+        
+        The default algorithm is md5. An alternate constructor from hashlib
+        can be passed as the algorithm parameter; file.hash(hashlib.sha1)
+        would, for example, compute the SHA-1 hash instead.
+        
+        If return_hex is False (it defaults to True), the hash object itself
+        will be returned instead of the return value of its hexdigest() method.
+        One can use this to access the binary hash instead.
+        """
+        hasher = algorithm()
+        with self.open("rb") as f:
+            for block in iter(_partial(f.read, 10), ""):
+                hasher.update(block)
+        if return_hex:
+            hasher = hasher.hexdigest()
+        return hasher
+    
+    def mkdir(self, silent=False):
+        """
+        An obsolete alias for self.create_folder(ignore_existing=silent)
+        present for backward compatibility reasons.
+        """
+        self.create_folder(ignore_existing=silent)
+    
+    def mkdirs(self, silent=False):
+        """
+        An obsolete alias for self.create_folder(ignore_existing=silent,
+        recursive=True) present for backward compatibility reasons.
+        """
+        self.create_folder(ignore_existing=silent, recursive=True)
+    
+    def makedirs(self, silent=False):
+        """
+        An obsolete alias for self.create_folder(ignore_existing=silent,
+        recursive=True) present for backward compatibility reasons.
+        """
+        self.create_folder(ignore_existing=silent, recursive=True)
+    
+    def create_folder(self, ignore_existing=False, recursive=False):
+        """
+        Creates the folder referred to by this File object. If it already
+        exists but is not a folder, an exception will be thrown. If it already
+        exists and is a folder, an exception will be thrown if ignore_existing
+        is False (the default); if ignore_existing is True, no exception will
+        be thrown.
+        
+        If the to-be-created folder's parent does not exist and recursive is
+        False, an exception will be thrown. If recursive is True, the folder's
+        parent, its parent's parent, and so on will be created automatically.
+        """
+        # See if we're already a folder
+        if self.is_folder:
+            # We are. If ignore_existing is True, then just return.
+            if ignore_existing:
+                return
+            # If it's not, raise an exception.
+            else:
+                raise Exception("The folder %r already exists." % self.path)
+        else:
+            # We're not a folder. (We don't need to see if we already exist as
+            # e.g. a file as the call to os.mkdir will take care of raising an
+            # exception for us in such a case.) Now create our parent if it
+            # doesn't exist and recursive is True.
+            if recursive and self.parent and not self.parent.exists:
+                self.parent.create_folder(recursive=True)
+            # Now turn ourselves into a folder.
+            os.mkdir(self.path)
+    
+    def change_to(self):
+        """
+        Sets the current working directory to self.
+        
+        Since File instances internally store paths in absolute form, other
+        File instances will continue to work just fine after this is called.
+        
+        If you need to restore the working directory at any point, you might
+        want to consider using self.as_working instead.
+        """
+        os.chdir(self._path)
+    
+    def cd(self):
+        """
+        An alias for self.change_to().
+        """
+        self.change_to()
+    
+    @property
+    def as_working(self):
+        """
+        A property that returns a context manager. This context manager sets
+        the working directory to self upon being entered and restores it to
+        what it previously was upon being exited. One can use this to replace
+        something like:
+        
+        old_dir = File()
+        new_dir.cd()
+        try:
+            ...stuff...
+        finally:
+            old_dir.cd()
+        
+        with the much nicer:
+        
+        with new_dir.as_working:
+            ...stuff...
+        
+        and get exactly the same effect.
+        
+        The context manager's __enter__ returns self (this file), so you can
+        also use an "as" clause on the with statement to get access to the
+        file in case you haven't got it stored in a variable anywhere.
+        """
+        return _AsWorking(self)
+    
+    def zip_into(self, filename, contents=True):
+        """
+        Creates a zip archive of this folder and writes it to the specified
+        filename, which can be either a pathname or a File object.
+        
+        If contents is True (the default), the files (and folders, and so on
+        recursively) contained within this folder will be written directly to
+        the zip file. If it's False, the folder will be written itself. The
+        difference is that, given a folder foo which looks like this:
+        
+        foo/
+            bar
+            baz/
+                qux
+        
+        Specifying contents=False will result in a zip file whose contents look
+        something like:
+        
+        zipfile.zip/
+            foo/
+                bar
+                baz/
+                    qux
+        
+        Whereas specifying contents=True will result in this:
+        
+        zipfile.zip/
+            bar
+            baz/
+                qux
+        
+        NOTE: This has only been tested on Linux. I still need to test it on
+        Windows to make sure pathnames are being handled correctly.
+        """
+        with closing(zip_module.ZipFile(File(filename).path, "w")) as zipfile:
+            for f in self.recurse():
+                if contents:
+                    path_in_zip = f.relative_path(self)
+                else:
+                    path_in_zip = f.relative_path(self.parent)
+                zipfile.write(f.path, path_in_zip)
+        
+    def unzip_into(self, folder):
+        """
+        Unzips the zip file referred to by self into the specified folder,
+        which will be automatically created (as if by File(folder).mkdirs())
+        if it does not yet exist.
+        
+        NOTE: This is an unsafe operation! The same warning present on Python's
+        zipfile.ZipFile.extractall applies here, namely that a maliciously
+        crafted zip file could cause absolute filesystem paths to be
+        overwritten. I hope to hand-roll my own extraction code in the future
+        that will explicitly filter out absolute paths.
+        
+        The return value of this function is File(folder).
+        """
+        folder = File(folder)
+        folder.mkdirs(silent=True)
+        with closing(zip_module.ZipFile(self._path, "r")) as zipfile:
+            zipfile.extractall(folder.path)
+    
+    def delete(self, contents=False, ignore_missing=False):
+        """
+        Deletes this file or folder, recursively deleting children if
+        necessary.
+        
+        The contents parameter has no effect, and is present for backward
+        compatibility.
+        
+        If the file does not exist and ignore_missing is False, an exception
+        will be thrown. If the file does not exist but ignore_missing is True,
+        this function simply does nothing.
+        
+        Note that symbolic links are never recursed into, and are instead
+        themselves removed.
+        """
+        if not self.exists:
+            if not ignore_missing:
+                raise Exception("This file does not exist.")
+        elif self.is_folder and not self.is_link:
+            for child in self.children:
+                child.delete()
+            os.rmdir(self.path)
+        else:
+            os.remove(self._path)
+
+    def delete_folder(self, contents=False):
+        """
+        This has been merged into the delete method and as such should no
+        longer be used. It has the exact same effect as delete.
+        """
+        self.delete(contents)
+    
+    def relative_path(self, relative_to=None):
+        """
+        An obsolete alias for self.get_path(relative_to=...), except that, if
+        relative_to is None, the working directory will be used instead.
+        """
+        if relative_to is None:
+            relative_to = File()
+        return self.get_path(relative_to)
+    
+    def ancestor_of(self, other, including_self=False):
+        """
+        Returns true if this file is an ancestor of the specified file. A file
+        is an ancestor of another file if that other file's parent is this
+        file, or its parent's parent is this file, and so on.
+        
+        If including_self is True, the file is considered to be an ancestor of
+        itself, i.e. True will be returned in the case that self == other.
+        Otherwise, only the file's immediate parent, and its parent's parent,
+        and so on are considered to be ancestors.
+        """
+        return self in File(other).get_ancestors(including_self)
+    
+    def descendant_of(self, other, including_self=False):
+        """
+        Returns true if this file is a descendant of the specified file. This
+        is equivalent to File(other).ancestor_of(self, including_self).
+        """
+        return File(other).ancestor_of(self, including_self)
+    
+    def link_to(self, other):
+        """
+        Creates this file as a symbolic link pointing to other, which can be
+        a pathname or a File object. Note that if it's a pathname, a symbolic
+        link will be created with the exact path specified; it will therefore
+        be absolute if the path is absolute or relative (to the link itself) if
+        the path is relative. If a File object, however, is used, the symbolic
+        link will always be absolute.
+        """
+        if isinstance(other, File):
+            os.symlink(other.path, self._path)
+        else:
+            os.symlink(other, self._path)
+    
+    @property
+    def link_target(self):
+        """
+        Returns the target to which this file, which is expected to be a
+        symbolic link, points, as a string. If this file is not a symbolic
+        link, None is returned.
+        """
+        if not self.is_link:
+            return None
+        return os.readlink(self._path)
+    
+    def dereference(self, recursive=False):
+        """
+        Dereference the symbolic link represented by this file and return a
+        File object pointing to the symbolic link's referent.
+        
+        If recursive is False, a File object pointing directly to the referent
+        will be returned. If recursive is True, the referent itself will be
+        recursively dereferenced, and the returned File will be guaranteed not
+        to be a link.
+        
+        If this file is not a symbolic link, self will be returned.
+        """
+        if not self.is_link:
+            return self
+        # Resolve the link relative to itself in case it points to a relative
+        # path
+        target = File(self.path, self.link_target)
+        if recursive:
+            return target.dereference(recursive=True)
+        else:
+            return target
+    
+    @property
+    def delete_on_exit(self):
+        """
+        A boolean indicating whether or not this file (which may be a file or a
+        folder) should be deleted on interpreter shutdown. This is False by
+        default, but may be set to True to request that a particular file be
+        deleted on exit, and potentially set back to False to cancel such a
+        request.
+        
+        Note that such files are not absolutely guaranteed to be deleted on
+        exit. Deletion is handled via an atexit hook, so files will not be
+        deleted if, for example, the interpreter crashes or os._exit() is
+        called.
+        
+        The value of this property is shared among all File instances pointing
+        to a given path. For example:
+        
+            File("test").delete_on_exit = True # Instance 1
+            print File("test").delete_on_exit # Instance 2, prints "True"
+        """
+        return self in _delete_on_exit
+    
+    @delete_on_exit.setter
+    def delete_on_exit(self, value):
+        if value:
+            _delete_on_exit.add(self)
+        else:
+            _delete_on_exit.discard(self)
+    
+    def list_xattrs(self):
+        """
+        Returns a list of the names of all of the extended attributes present
+        on this file.
+        
+        This is only supported on Linux and Max OS X right now. I hope to add
+        Windows support in the future.
+        
+        Note that some Linux filesystems must be mounted with a particular
+        option to enable extended attribute support. Ext2/3/4, for example,
+        must be mounted with the user_xattr mount option set. (I heard
+        somewhere that user_xattr might become a default option in the near
+        future, but such a default is certainly not widely deployed yet.)
+        
+        Also note that some filesystems (such as ext2/3/4) require the
+        attribute name to have a particular format (in the case of ext2/3/4,
+        "prefix.name", where "prefix" is one of "system", "trusted",
+        "security", and "user"). An "Operation not supported" error will be
+        produced if an invalid format is used.
+        
+        Setting extended attributes on symlinks will result in undefined and
+        platform-specific behavior. Don't do it unless you know what you're
+        doing.
+        
+        Extended attribute support currently requires the PyPI module "xattr"
+        to be installed. An exception will be thrown if it is not available.
+        You can usually install it by running "sudo pip install xattr".
+        
+        NOTE: For now, if xattr support is not enabled, this will just return
+        the empty list. Try using set_xattr if you want to get an exception if
+        extended attributes aren't enabled. I'll probably add a method for
+        checking if extended attributes are enabled on the file in question
+        later on.
+        """
+        import xattr
+        try:
+            return list(xattr.listxattr(self.path))
+        except IOError as e:
+            if e.errno == errno.EOPNOTSUPP or e.errno == errno.ENOENT: # No
+                # xattr support or the file doesn't exist
+                return []
+            else:
+                raise
+    
+    def set_xattr(self, name, value):
+        """
+        Sets an extended attribute with the specified name and value on this
+        file.
+        
+        The same compatibility warnings present on list_xattrs apply here.
+        """
+        import xattr
+        xattr.setxattr(self.path, name, value)
+    
+    def get_xattr(self, name, default=None):
+        """
+        Returns the value of the extended attribute with the specified name
+        on this file, as a string, or returns the value of default (which
+        defaults to None) if no such extended attribute exists.
+        
+        The same compatibility warnings present on list_xattrs apply here.
+        """
+        import xattr
+        try:
+            return xattr.getxattr(self.path, name)
+        except IOError as e:
+            # TODO: See if this is different on other platforms, such as OS X
+            if (e.errno == errno.ENODATA or e.errno == errno.EOPNOTSUPP
+                    or e.errno == errno.ENOENT):
+                return default
+            else:
+                raise
+    
+    def has_xattr(self, name):
+        """
+        Returns True if this file has an extended attribute with the specified
+        name, or False if it doesn't.
+        
+        The same compatibility warnings present on list_xattrs apply here.
+        """
+        return self.get_xattr(name, None) is not None
+    
+    def check_xattr(self, name):
+        """
+        Same as get_xattr, but throws a KeyError if the specified extended
+        attribute does not exist instead of returning a default value.
+        
+        The same compatibility warnings present on list_xattrs apply here.
+        
+        Note that an IOError will be thrown if extended attributes aren't
+        supported instead of KeyError.
+        """
+        import xattr
+        try:
+            return xattr.getxattr(self.path, name)
+        except IOError as e:
+            if e.errno == errno.ENODATA:
+                raise KeyError("File %r has no attribute %r" % (self.path, name))
+            else:
+                raise
+    
+    def delete_xattr(self, name, silent=True):
+        """
+        Deletes the extended attribute with the specified name from this file.
+        If the attribute does not exist and silent is true, nothing will
+        happen. If the attribute does not exist and silent is false, an
+        exception will be thrown.
+        
+        The same compatibility warnings present on list_xattrs apply here.
+        """
+        import xattr
+        try:
+            xattr.removexattr(self.path, name)
+        except IOError as e:
+            if (e.errno == errno.ENODATA or e.errno == errno.EOPNOTSUPP
+                    or e.errno == errno.ENOENT) and silent: # Attribute doesn't exist
+                # and silent is true; do nothing.
+                pass
+            else:
+                raise
+    
+    def __str__(self):
+        return "fileutils.File(%r)" % self._path
+    
+    __repr__ = __str__
+    
+    # Use __cmp__ instead of the rich comparison operators for brevity
+    def __cmp__(self, other):
+        if not isinstance(other, File):
+            return NotImplemented
+        return cmp(os.path.normcase(self.path), os.path.normcase(other.path))
+    
+    def __hash__(self):
+        return hash(os.path.normcase(self.path))
+    
+    def __nonzero__(self):
+        """
+        Returns True. File objects are always true values; to test for their
+        existence, use self.exists instead.
+        """
+        return True
+
+
+class _AsWorking(object):
+    """
+    The class of the context managers returned from File.as_working. See that
+    method's docstring for more information on what this class does.
+    """
+    def __init__(self, folder):
+        self.folder = folder
+    
+    def __enter__(self):
+        self.old_path = os.getcwd()
+        self.folder.cd()
+        return self.folder
+    
+    def __exit__(self, *args):
+        os.chdir(self.old_path)
+
+
+def create_temporary_folder(suffix="", prefix="tmp", parent=None,
+                            delete_on_exit=False):
+    """
+    Creates a folder (with tmpfile.mkdtemp) with the specified prefix, suffix,
+    and parent folder (or the current platform's default temporary directory if
+    no parent is specified).
+    
+    If delete_on_exit is True, the returned file's delete_on_exit property will
+    be set to True just before returning it.
+    """
+    parent = File(parent or tempfile.gettempdir())
+    folder = File(tempfile.mkdtemp(suffix, prefix, parent.path))
+    folder.delete_on_exit = delete_on_exit
+    return folder
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

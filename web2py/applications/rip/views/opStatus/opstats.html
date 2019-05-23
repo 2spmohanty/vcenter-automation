@@ -1,0 +1,4 @@
+{{extend 'layout.html'}}
+<h4 style="color:lightgrey;font-family:verdana;"><b>Current Operation Status</b> </h4>
+{{=LOAD(c='opStatus',f='opstats',extension='load',ajax=True,timeout=45000, times=10)}}
+{{pass}}

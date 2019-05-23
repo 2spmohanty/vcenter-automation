@@ -1,0 +1,129 @@
+{{extend 'layout.html'}}
+{{extend 'layout.html'}}
+
+
+<style>
+table, th, td {
+    border: 1px white;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+    section {
+    width:1000px;
+    padding-top: 150px;
+    padding-left:350px;
+}
+p    {
+color:grey;
+font-family: courier;
+font-size: 90%;
+}
+
+codeA {
+  background-color:#EEEEEE;
+  font-family:"Consolas";
+}
+.panel-body  {
+    word-break:break-all
+}
+.panel-heading {
+    color: #ffffff;
+}
+</style>
+
+<div class = "row">
+    <div class="col-sm-5"></div>
+    <div class="col-sm-2"><h4 style="color:lightgrey;font-family:verdana;"><b>VC Memory Leaks</b> </h4></div>
+    <div class="col-sm-5"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-2"></div>
+    <div class="col-sm-8">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading" >URI: <u class="text-lowercase">http://{{=response.app_uri}}/rip/vc_0/vcmemleak</u></div>
+                    <div class="panel-body code"><codeA>This API can be used to identify memory leaks in different services running across the vCenter. The crux of this API is CHAP and AH64, developed by TIM BODDY, VMWare. More details on CHAP would be available in documentation page, where Tim discusses the advantages of using it for Memory analysis. A livecore dump is taken on the service and anlaysis is done using different debuggers to gather the output. This API runs with a disclaimer and caution as coredump might affect the memory/process for quite some time and it can disrupt some critical programs running on the VC. So run it when it is absolutely required to go for memory analysis. Services implemented for analysis are &quot;analytics&quot;, &quot;applmgmt&quot;,&quot;hvc&quot;, &quot;imagebuilder&quot;, &quot;lookupsvc&quot;, &quot;mbcs&quot;, &quot;netdumper&quot;, &quot;perfcharts&quot;,  &quot;pschealth&quot;,&quot;rbd&quot;, &quot;rhttpproxy&quot;, &quot;sca&quot;, &quot;statsmonitor&quot;, &quot;trustmanagement&quot;,&quot;updatemgr&quot;, &quot;vcha&quot;, &quot;vmcam&quot;, &quot;vmonapi&quot;, &quot;vmware-postgres-archiver&quot;,vmware-vpostgres&quot;,&quot;vsan-dps&quot;,&quot;vsan-health&quot;, &quot;vsm&quot; . Incase the user needs to run the analysis on all the above service he can specify the &quot;all&quot; value under service key. "vpxd" services Anlysis takes a long time. So there is a separate URI for the VPXD service Leak analysis. Please refer sample JSON.</codeA>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-2"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " >
+                        <a data-toggle="collapse" href="#collapse1"><u color="#ffffff">Sample JSON</u></a>
+                    </div>
+                    <div id="collapse1" class="panel-collapse collapse">
+                        <div class="panel-body" ><pre id="samplexml"> Hello </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " font color="white">
+                        <a data-toggle="collapse" href="#collapse2">Try it Out</a>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <div class="panel-body" >{{=form}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+
+
+
+<script>
+
+$(document).ready(function() {
+
+let html = `
+
+{
+    &quot;operation&quot;: &quot;memoryleak&quot;,
+    &quot;vc&quot;: [
+        {
+	    &quot;vcname&quot;: &quot;&lt;vc_ip_or_fqdn&gt;&quot;,
+            &quot;username&quot;: &quot;root&quot;,
+            &quot;password&quot;: &quot;&lt;ssh_password&gt;&quot;,
+            &quot;service&quot;: [
+                &quot;analytics&quot;, &quot;applmgmt&quot;,&quot;hvc&quot;, &quot;imagebuilder&quot;,
+                &quot;lookupsvc&quot;, &quot;mbcs&quot;, &quot;netdumper&quot;, &quot;perfcharts&quot;,
+                &quot;pschealth&quot;,&quot;rbd&quot;, &quot;rhttpproxy&quot;, &quot;sca&quot;,
+                &quot;statsmonitor&quot;, &quot;trustmanagement&quot;,&quot;updatemgr&quot;,
+                &quot;vcha&quot;, &quot;vmcam&quot;, &quot;vmonapi&quot;, &quot;vmware-postgres-archiver&quot;,
+                vmware-vpostgres&quot;, &quot;vsan-dps&quot;,&quot;vsan-health&quot;,
+                &quot;vsm&quot;
+            ]
+
+
+        }
+    ]
+}`;
+
+$("#samplexml").html(html);
+});
+
+
+
+</script>

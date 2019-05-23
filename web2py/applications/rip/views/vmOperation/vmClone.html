@@ -1,0 +1,136 @@
+{{extend 'layout.html'}}
+
+
+<style>
+table, th, td {
+    border: 1px white;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+    section {
+    width:1000px;
+    padding-top: 150px;
+    padding-left:350px;
+}
+p    {
+color:grey;
+font-family: courier;
+font-size: 90%;
+}
+
+codeA {
+  background-color:#EEEEEE;
+  font-family:"Consolas";
+}
+.panel-body  {
+    word-break:break-all
+}
+.panel-heading {
+    color: #ffffff;
+}
+</style>
+
+<div class = "row">
+    <div class="col-sm-5"></div>
+    <div class="col-sm-2"><h4 style="color:lightgrey;font-family:verdana;"><b>VM Power Operation</b> </h4></div>
+    <div class="col-sm-5"></div>
+</div>
+<div class = "row">
+    <div class="col-sm-2"></div>
+    <div class="col-sm-8">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading" >URI: <u class="text-lowercase">http://{{=response.app_uri}}/rip/vm_0/vmclone</u></div>
+                    <div class="panel-body code"><codeA>This API can be used to clone VM simultaneously on multiple VCENTER, DATACENTER, TEMPLATES.
+                    Please refer sample JSON for the input format. </codeA>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-2"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " >
+                        <a data-toggle="collapse" href="#collapse1"><u color="#ffffff">Sample JSON</u></a>
+                    </div>
+                    <div id="collapse1" class="panel-collapse collapse">
+                        <div class="panel-body" ><pre id="samplexml"> Hello </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " font color="white">
+                        <a data-toggle="collapse" href="#collapse2">Try it Out</a>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <div class="panel-body" >{{=form}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+
+
+
+<script>
+
+$(document).ready(function() {
+
+let html = `{
+   "operation":"vmclones",
+   "vc":[
+      {
+         "vcname":"10.161.65.2",
+         "wait":10,
+         "username":"Administrator@vsphere.local",
+         "password":"xxxxxxxx",
+         "dc":[
+            {
+               "dcname":"vcqaDC",
+               "templates":[
+                  {
+                     "template":"VM-Web-Tier",
+                     "container":"als",
+                     "clones":2,
+                     "clonespecs":{
+                        "cluster": "als",
+                        "host":"Hostname",
+                        "basename":"VM-Clone",
+                        "datastore":"sharedVmfs-0",
+                        "network":"VM Network",
+                        "power" : "on"
+                     }
+                  }
+               ]
+            }
+         ]
+      }
+   ]
+}`;
+
+$("#samplexml").html(html);
+});
+
+
+
+</script>

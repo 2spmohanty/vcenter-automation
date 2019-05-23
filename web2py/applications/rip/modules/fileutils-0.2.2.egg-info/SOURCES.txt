@@ -1,0 +1,7 @@
+fileutils.py
+setup.cfg
+setup.py
+fileutils.egg-info/PKG-INFO
+fileutils.egg-info/SOURCES.txt
+fileutils.egg-info/dependency_links.txt
+fileutils.egg-info/top_level.txt

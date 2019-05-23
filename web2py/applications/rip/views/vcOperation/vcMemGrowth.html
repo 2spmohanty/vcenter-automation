@@ -1,0 +1,119 @@
+{{extend 'layout.html'}}
+
+<style>
+table, th, td {
+    border: 1px white;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+    section {
+    width:1000px;
+    padding-top: 150px;
+    padding-left:350px;
+}
+p    {
+color:grey;
+font-family: courier;
+font-size: 90%;
+}
+
+codeA {
+  background-color:#EEEEEE;
+  font-family:"Consolas";
+}
+.panel-body  {
+    word-break:break-all
+}
+.panel-heading {
+    color: #ffffff;
+}
+</style>
+
+<div class = "row">
+    <div class="col-sm-5"></div>
+    <div class="col-sm-2"><h4 style="color:lightgrey;font-family:verdana;"><b>VC Memory Growth</b> </h4></div>
+    <div class="col-sm-5"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-2"></div>
+    <div class="col-sm-8">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading" >URI: <u class="text-lowercase">http://{{=response.app_uri}}/rip/vc_0/vcMemGrowth</u></div>
+                    <div class="panel-body code"><codeA>This API can be used to analyse Memory growth in a vcenter. The crux of this API is CHAP and AH64, developed by TIM BODDY, VMWare. More details on CHAP would be available in documentation page, where Tim discusses the advantages of using it for Memory analysis. The Memory growth analysis is done by comparing the counts of Managed Object References in a VC and the instances of MORs in the core file. The corefile is simultaneously taken while the Inventory counts is being done by using VMODL query. The &quot;vc_version&quot; and vc_build&quot; keys are compulsory as it is used to download debug symbols from buildweb. Please refer sample JSON.</codeA>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-2"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " >
+                        <a data-toggle="collapse" href="#collapse1"><u color="#ffffff">Sample JSON</u></a>
+                    </div>
+                    <div id="collapse1" class="panel-collapse collapse">
+                        <div class="panel-body" ><pre id="samplexml"> Hello </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " font color="white">
+                        <a data-toggle="collapse" href="#collapse2">Try it Out</a>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <div class="panel-body" >{{=form}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+
+
+
+<script>
+
+$(document).ready(function() {
+
+let html = `{
+    &quot;operation&quot;: &quot;memorygrowth&quot;,
+    &quot;vc&quot;: [
+        {
+            &quot;vc_version&quot;: &quot;6.8.2&quot;,
+            &quot;local_pass&quot;: &quot;Admin!23&quot;,
+            &quot;local_user&quot;: &quot;Administrator@vsphere.local&quot;,
+            &quot;ssh_user&quot;: &quot;root&quot;,
+            &quot;ssh_pass&quot;: &quot;vmware&quot;,
+            &quot;vc_build&quot;: &quot;9091796&quot;,
+            &quot;vcname&quot;: &quot;10.192.100.34&quot;
+        }
+    ]
+}
+`;
+
+$("#samplexml").html(html);
+});
+
+
+
+</script>

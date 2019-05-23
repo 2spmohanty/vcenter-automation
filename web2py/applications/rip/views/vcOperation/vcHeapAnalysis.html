@@ -1,0 +1,151 @@
+{{extend 'layout.html'}}
+
+
+<style>
+table, th, td {
+    border: 1px white;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+}
+    section {
+    width:1000px;
+    padding-top: 150px;
+    padding-left:350px;
+}
+p    {
+color:grey;
+font-family: courier;
+font-size: 90%;
+}
+
+codeA {
+  background-color:#EEEEEE;
+  font-family:"Consolas";
+}
+.panel-body  {
+    word-break:break-all
+}
+.panel-heading {
+    color: #ffffff;
+}
+</style>
+
+<div class = "row">
+    <div class="col-sm-5"></div>
+    <div class="col-sm-4"><h4 style="color:lightgrey;font-family:verdana;"><b>VC Java Service Heap Analysis</b> </h4></div>
+    <div class="col-sm-5"></div>
+</div>
+<div class = "row">
+    <div class="col-sm-2"></div>
+    <div class="col-sm-8">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading" >URI: <u class="text-lowercase">http://{{=response.app_uri}}/rip/vc_0/heapAnalysis</u></div>
+                    <div class="panel-body code"><codeA>This API can be used to trigger Heap Analysis on Java services running in a vCenter. The heap analysis can be used to detect potential memory leaks in Java threads. The API uses the same jars that is used by Eclipse Memory Analyzer. The heap analysis currently implemented run on  &quot;vsphere-client&quot;, &quot;vsphere-ui&quot;,&quot;vmware-certificatemanagement&quot;,&quot;vmware-content-library&quot;,                       &quot;vmware-vapi-endpoint&quot;,&quot;vmware-eam&quot;,&quot;vmware-vpxd-svcs&quot;,&quot;vmware-cis-license&quot;,&quot;vmware-sps&quot;. The user can pick any of these service or can specify &quot;all&quot; under &quot;service&quot; key.
+
+This API can also be used to trigger heap analysis on existing HPROF file. In this case an additional key &quot;hprof&quot; must be specifed with value as the HPROF file name.
+
+
+Please refer sample JSON.</codeA>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-2"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " >
+                        <a data-toggle="collapse" href="#collapse1"><u color="#ffffff">Sample JSON</u></a>
+                    </div>
+                    <div id="collapse1" class="panel-collapse collapse">
+                        <div class="panel-body" ><pre id="samplexml"> Hello </pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+<div class = "row">
+    <div class="col-sm-4"></div>
+    <div class="col-sm-4">
+            <div class="panel-group">
+                <div class="panel panel-primary">
+                    <div class="panel-heading " font color="white">
+                        <a data-toggle="collapse" href="#collapse2">Try it Out</a>
+                    </div>
+                    <div id="collapse2" class="panel-collapse collapse">
+                        <div class="panel-body" >{{=form}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    <div class="col-sm-4"></div>
+</div>
+
+
+
+
+<script>
+
+$(document).ready(function() {
+
+let html = `
+--- Sample JSON for Generating new HPROFS and Analysis ---
+{
+    &quot;operation&quot;: &quot;heapanalysis&quot;,
+    &quot;vc&quot;: [
+        {
+	    &quot;vcname&quot;: &quot;vc_ip_or_fqdn&quot;,
+            &quot;username&quot;: &quot;root&quot;,
+            &quot;password&quot;: &quot;ssh_password&quot;,
+            &quot;service&quot;: [
+                &quot;vsphere-client&quot;, &quot;vsphere-ui&quot;,&quot;vmware-certificatemanagement&quot;,
+                &quot;vmware-content-library&quot;,&quot;vmware-vapi-endpoint&quot;,&quot;vmware-eam&quot;,
+                &quot;vmware-vpxd-svcs&quot;,&quot;vmware-cis-license&quot;,&quot;vmware-sps&quot;
+            ],
+	    &quot;jmapPath&quot; : &quot;/storage/updatemgr/jdk1.8.0_151/bin/&quot;,
+	    &quot;dumpDir&quot; : &quot;/storage/updatemgr/dump/&quot;
+
+        }
+    ]
+}
+
+---- Sample JSON for Analysis on existing HPROFS ----
+
+{
+    &quot;operation&quot;: &quot;heapanalysis&quot;,
+    &quot;vc&quot;: [
+        {
+			&quot;vcname&quot;: &quot;10.192.100.34&quot;,
+            &quot;username&quot;: &quot;root&quot;,
+            &quot;password&quot;: &quot;vmware&quot;,
+            &quot;service&quot;: [
+                &quot;vmware-cis-license&quot;
+            ],
+			&quot;jmapPath&quot; : &quot;/storage/updatemgr/jdk1.8.0_151/bin/&quot;,
+			&quot;dumpDir&quot; : &quot;/storage/updatemgr/dump/&quot;,
+			&quot;hprof&quot; : &quot;/storage/updatemgr/dump/vmware-cis-license/vmware-cis-license.hprof&quot;
+
+        }
+    ]
+}`
+
+;
+
+$("#samplexml").html(html);
+});
+
+
+
+</script>

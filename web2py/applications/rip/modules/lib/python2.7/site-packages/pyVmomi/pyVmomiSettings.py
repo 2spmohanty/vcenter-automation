@@ -1,0 +1,2 @@
+allowGetSet=True
+allowCapitalizedNames=True

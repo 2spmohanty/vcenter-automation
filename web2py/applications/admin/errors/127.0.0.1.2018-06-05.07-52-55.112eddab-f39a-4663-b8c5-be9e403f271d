@@ -1,0 +1,21 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.TypeError'> LoadLibrary() argument 1 must be string, not unicode"
+p3
+sS'layer'
+p4
+S'C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\applications\\admin\\controllers/debug.py'
+p5
+sS'code'
+p6
+S'<code object <module> at 0690BCC8, file "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\applications\\admin\\controllers/debug.py", line 1>'
+p7
+sS'snapshot'
+p8
+(dp9
+sS'traceback'
+p10
+S'Traceback (most recent call last):\n  File "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\gluon\\restricted.py", line 219, in restricted\n    exec(ccode, environment)\n  File "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\applications\\admin\\controllers/debug.py", line 7, in <module>\n    from gluon.debug import communicate, web_debugger, dbg_debugger\n  File "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\gluon\\custom_import.py", line 111, in custom_importer\n    return NATIVE_IMPORTER(name, globals, locals, fromlist, level)\n  File "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\gluon\\debug.py", line 55, in <module>\n    debugger = pdb.Pdb(completekey=None, stdin=pipe_in, stdout=pipe_out,)\n  File "C:\\Python27\\lib\\pdb.py", line 72, in __init__\n    import readline\n  File "C:\\Users\\smrutim\\Documents\\Python\\RIP\\web2py\\gluon\\custom_import.py", line 77, in custom_importer\n    return NATIVE_IMPORTER(oname, globals, locals, fromlist, level)\n  File "C:\\Python27\\lib\\site-packages\\readline.py", line 34, in <module>\n    rl = Readline()\n  File "C:\\Python27\\lib\\site-packages\\pyreadline\\rlmain.py", line 423, in __init__\n    self.console = console.Console()\n  File "C:\\Python27\\lib\\site-packages\\pyreadline\\console\\console.py", line 221, in __init__\n    CDLL(\'python%s%s\' % (sys.version[0], sys.version[2]))\n  File "C:\\Python27\\lib\\ctypes\\__init__.py", line 362, in __init__\n    self._handle = _dlopen(self._name, mode)\nTypeError: LoadLibrary() argument 1 must be string, not unicode\n'
+p11
+s.
